@@ -13,6 +13,15 @@ enum class ConsoleColor
 	WHITE = RED | GREEN | BLUE,
 };
 
+void ShowConsoleCursor(bool flag)
+{
+	HANDLE output = ::GetStdHandle(STD_OUTPUT_HANDLE);
+	CONSOLE_CURSOR_INFO cursorInfo;
+	::GetConsoleCursorInfo(output, &cursorInfo);
+	cursorInfo.bVisible = flag;
+	::SetConsoleCursorInfo(output, &cursorInfo);
+}
+
 void SetCursorPosition(int x, int y)
 {
 	HANDLE output = ::GetStdHandle(STD_OUTPUT_HANDLE);
@@ -35,6 +44,13 @@ BinarySearchTree::BinarySearchTree()
 BinarySearchTree::~BinarySearchTree()
 {
 	delete _nil;
+}
+
+void BinarySearchTree::Print()
+{
+	::system("cls");
+	ShowConsoleCursor(false);
+	Print(_root, 10, 0);
 }
 
 void BinarySearchTree::Print(Node* node, int x, int y)
@@ -212,15 +228,33 @@ void BinarySearchTree::Delete(int key)
 	Delete(deleteNode);
 }
 
+// 먼저 BST 삭제 실행
+//		[20]
+// [10]		[30]
+//	  [15] [25] [40]
 void BinarySearchTree::Delete(Node* node)
 {
-	if (node == nullptr)
+	if (node == _nil)
 		return;
 
-	if (node->left == nullptr)
+	if (node->left == _nil)
+	{
+		Color color = node->color;
+		Node* right = node->right;
 		Replace(node, node->right);
-	else if (node->right == nullptr)
+
+		if (color == Color::Black)
+			DeleteFixup(right);
+	}
+	else if (node->right == _nil)
+	{
+		Color color = node->color;
+		Node* right = node->left;
 		Replace(node, node->left);
+
+		if (color == Color::Black)
+			DeleteFixup(right);
+	}
 	else
 	{
 		// 다음 데이터 찾기
@@ -230,17 +264,95 @@ void BinarySearchTree::Delete(Node* node)
 	}
 }
 
+void BinarySearchTree::DeleteFixup(Node* node)
+{
+	Node* x = node;
+
+	while (x != _root && x->color == Color::Black)
+	{
+		if (x == x->parent->left)
+		{
+			Node* s = x->parent->right;
+			if (s->color == Color::Red)
+			{
+				s->color = Color::Black;
+				x->parent->color = Color::Red;
+
+				LeftRotate(x->parent);
+				s = x->parent->right;
+			}
+
+			if (s->left->color == Color::Black && s->right->color == Color::Black)
+			{
+				s->color = Color::Red;
+				x = x->parent;
+			}
+			else
+			{
+				if (s->right->color == Color::Black)
+				{
+					s->left->color = Color::Black;
+					s->color == Color::Red;
+					RightRotate(s);
+					s = x->parent->right;
+				}
+
+				s->color = x->parent->color;
+				x->parent->color = Color::Black;
+				s->right->color = Color::Black;
+				LeftRotate(x->parent);
+				x = _root;
+			}
+		}
+		else
+		{
+			Node* s = x->parent->left;
+			if (s->color == Color::Red)
+			{
+				s->color = Color::Black;
+				x->parent->color = Color::Red;
+
+				RightRotate(x->parent);
+				s = x->parent->left;
+			}
+
+			if (s->right->color == Color::Black && s->left->color == Color::Black)
+			{
+				s->color = Color::Red;
+				x = x->parent;
+			}
+			else
+			{
+				if (s->left->color == Color::Black)
+				{
+					s->right->color = Color::Black;
+					s->color == Color::Red;
+					LeftRotate(s);
+					s = x->parent->left;
+				}
+
+				s->color = x->parent->color;
+				x->parent->color = Color::Black;
+				s->left->color = Color::Black;
+				RightRotate(x->parent);
+				x = _root;
+			}
+		}
+	}
+
+	x->color = Color::Black;
+}
+
 void BinarySearchTree::Replace(Node* u, Node* v)
 {
-	if (u->parent == nullptr)
+	if (u->parent == _nil)
 		_root = v;
 	else if (u == u->parent->left)
 		u->parent->left = v;
 	else
 		u->parent->right = v;
 
-	if (v)
-		v->parent = u->parent;
+	v->parent = u->parent;
 
 	delete u;
 }
